@@ -1,5 +1,4 @@
-// ignore_for_file: non_constant_identifier_names
-
+// ignore_for_file: non_constant_identifier_names, unused_local_variable
 import 'package:local_auth/local_auth.dart';
 
 class Biometrics {

@@ -1,51 +1,34 @@
-import 'dart:io';
-import 'package:authenticator/config/config.dart';
-import 'package:authenticator/pages/restore_page.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
-import '../services/Authentication.dart';
+
+import '../pages/main_page.dart';
 import '../services/Navigation.dart';
 import '../services/Preferences.dart';
 import '../services/http.dart';
-import '../widgets/custom_widgets/custom_widget.dart';
+import 'custom_widgets/custom_widget.dart';
+import 'page_widget.dart';
 
-class qr_scan extends StatefulWidget {
-  const qr_scan({Key? key}) : super(key: key);
+class scanner extends StatefulWidget {
+  Widget nextPage;
+
+  scanner({required this.nextPage, required BuildContext context});
 
   @override
-  State<qr_scan> createState() => _qr_scanState();
+  State<scanner> createState() => _scannerState();
 }
 
-class _qr_scanState extends State<qr_scan> {
-  Barcode? result;
+class _scannerState extends State<scanner> {
+  String? result;
+  bool scanned = false;
   QRViewController? controller;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-
-  // In order to get hot reload to work we need to pause the camera if the platform
-  // is android, or resume the camera if the platform is iOS.
-  @override
-  void reassemble() {
-    super.reassemble();
-    if (Platform.isAndroid) {
-      controller!.pauseCamera();
-    }
-    controller!.resumeCamera();
-  }
-
-  @override
-  void dispose() {
-    controller?.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ThemeColor.Primary,
       body: Column(
         children: <Widget>[
-          Expanded(flex: 6, child: _buildQrView(context)),
+          Expanded(flex: 4, child: _buildQrView(context)),
           Expanded(
             flex: 1,
             child: FittedBox(
@@ -53,28 +36,32 @@ class _qr_scanState extends State<qr_scan> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: <Widget>[
+                  if (result != null)
+                    Text(result!)
+                  else
+                    TextWidget('Scan a code'),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: <Widget>[
                       Container(
                         margin: const EdgeInsets.all(8),
-                        child: ButtonWidget(
-                          title: "Return",
-                          icon: Icons.arrow_back,
-                          func: () async {
-                            Navigate.To(context, restore_page());
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Navigator.pop(context);
                           },
+                          child: const Text('Return',
+                              style: TextStyle(fontSize: 20)),
                         ),
                       ),
                       Container(
                         margin: const EdgeInsets.all(8),
-                        child: ButtonWidget(
-                          title: "Sart Camera",
-                          icon: Icons.camera,
-                          func: () async {
+                        child: ElevatedButton(
+                          onPressed: () async {
                             await controller?.resumeCamera();
                           },
+                          child: const Text('resume',
+                              style: TextStyle(fontSize: 20)),
                         ),
                       )
                     ],
@@ -110,30 +97,41 @@ class _qr_scanState extends State<qr_scan> {
   }
 
   void _onQRViewCreated(QRViewController controller) {
-    if (mounted) {
-      setState(() {
-        this.controller = controller;
+    if (scanned == false && mounted) {
+      print("Req");
+      scanned = true;
+      if (mounted) {
+        setState(() {
+          this.controller = controller;
+        });
+      }
+      controller.scannedDataStream.listen((scanData) async {
+        if (scanned == true && mounted) {
+          dynamic accId = await Preferences.getPref('accId');
+          String message = "${scanData.code}@@@$accId";
+          dynamic msg = scanData.code?.split("@@@");
+          print(msg);
+          dynamic payLoad = {
+            "secret": msg[0],
+            "email": msg[1],
+            "websiteId": msg[2],
+            "accountId": accId
+          };
+          dynamic response = await Http.post("/link", payLoad);
+          try {
+            if (response['status'] == 'ok' && mounted) {
+              snackBar("Account linked.", context);
+              return Navigate.To(context, widget.nextPage);
+            } else if (mounted) {
+              snackBar(response['error'], context);
+              Navigator.pop(context);
+            }
+          } catch (err) {
+            print(err);
+          }
+        }
       });
     }
-    controller.scannedDataStream.listen((scanData) async {
-      String route = "/findaccount?code=${scanData.code}";
-      dynamic response = await Http.get(route);
-
-      if (response['status'] == 'ok') {
-        await Preferences.setPref('pendingId', response['acc']['id']);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => restore_page(pin: true, Account: response['acc']),
-          ),
-        );
-      } else if (response['status'] == 'authenticate') {
-        await Authentication.Login(document: response['acc'], context: context);
-      } else if (mounted)
-        setState(() {
-          result = scanData;
-        });
-    });
   }
 
   void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
@@ -143,5 +141,11 @@ class _qr_scanState extends State<qr_scan> {
         const SnackBar(content: Text('no Permission')),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    controller?.dispose();
+    super.dispose();
   }
 }

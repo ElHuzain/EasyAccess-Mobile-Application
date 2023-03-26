@@ -5,6 +5,7 @@ import '../config/config.dart';
 import '../widgets/custom_widgets/custom_widget.dart';
 import '../widgets/page_widget.dart';
 import 'settings/account_settings.dart';
+import 'settings/logs.dart';
 
 class settings_page extends StatefulWidget {
   @override
@@ -18,21 +19,28 @@ class _settings_pageState extends State<settings_page> {
       context: context,
       toSettings: false,
       content: Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              settingsWidget(
-                  icon: Icons.settings,
-                  settingsName: "Theme",
-                  nextWidget: theme_settings()),
-              const SizedBox(height: 15),
-              settingsWidget(
-                  icon: Icons.shield,
-                  settingsName: "Account",
-                  nextWidget: account_settings())
-            ],
-          ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            settingsWidget(
+                icon: Icons.settings,
+                settingsName: "Theme",
+                nextWidget: theme_settings()),
+            const SizedBox(height: 15),
+            settingsWidget(
+              icon: Icons.shield,
+              settingsName: "Account",
+              nextWidget: account_settings(),
+            ),
+            const SizedBox(height: 15),
+            settingsWidget(
+              icon: Icons.note,
+              settingsName: "Logs",
+              nextWidget: logs_page(),
+            )
+          ],
         ),
+      ),
     );
   }
 }

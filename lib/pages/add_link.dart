@@ -2,6 +2,7 @@ import 'package:authenticator/pages/restore_page.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
+import '../config/config.dart';
 import '../services/Authentication.dart';
 import '../services/Navigation.dart';
 import '../services/Preferences.dart';
@@ -25,48 +26,38 @@ class _add_linkState extends State<add_link> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: ThemeColor.Primary,
       body: Column(
         children: <Widget>[
-          Expanded(flex: 4, child: _buildQrView(context)),
+          Expanded(flex: 7, child: _buildQrView(context)),
           Expanded(
             flex: 1,
             child: FittedBox(
               fit: BoxFit.contain,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
-                  if (result != null)
-                    // Text(
-                    //     'Barcode Type: ${describeEnum(result!.format)}   Data: ${result!.code}')
-                    Text(result!)
-                  else
-                    TextWidget('Scan a code'),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: <Widget>[
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            Navigate.To(context, main_page());
-                          },
-                          child: const Text('Return',
-                              style: TextStyle(fontSize: 20)),
-                        ),
-                      ),
-                      Container(
-                        margin: const EdgeInsets.all(8),
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await controller?.resumeCamera();
-                          },
-                          child: const Text('resume',
-                              style: TextStyle(fontSize: 20)),
-                        ),
-                      )
-                    ],
+                  Container(
+                    margin: const EdgeInsets.all(8),
+                    child: ButtonWidget(
+                      icon: Icons.arrow_back,
+                      title: "Return.",
+                      func: () async {
+                        Navigator.pop(context);
+                      },
+                    ),
                   ),
+                  Container(
+                    margin: const EdgeInsets.all(8),
+                    child: ButtonWidget(
+                      icon: Icons.camera,
+                      title: "Start Camera",
+                      func: () async {
+                        await controller?.resumeCamera();
+                      },
+                    ),
+                  )
                 ],
               ),
             ),
@@ -98,12 +89,15 @@ class _add_linkState extends State<add_link> {
   }
 
   void _onQRViewCreated(QRViewController controller) {
-    if (scanned == false) {
-      scanned = true;
+    print(scanned);
+    if (mounted) {
       setState(() {
         this.controller = controller;
       });
-      controller.scannedDataStream.listen((scanData) async {
+    }
+    controller.scannedDataStream.listen((scanData) async {
+      if (scanned == false) {
+        scanned = true;
         dynamic accId = await Preferences.getPref('accId');
         String message = "${scanData.code}@@@$accId";
         dynamic msg = scanData.code?.split("@@@");
@@ -115,16 +109,19 @@ class _add_linkState extends State<add_link> {
           "accountId": accId
         };
         dynamic response = await Http.post("/link", payLoad);
-        if (response['status'] == 'ok') {
-          return Navigate.To(context, main_page());
-        } else {
-          scanned = false;
-          // setState(() {
-          //   result = response['error'];
-          // });
+        try {
+          if (response['status'] == 'ok' && mounted) {
+            snackBar("Account linked.", context);
+            Navigator.pop(context);
+          } else if (mounted) {
+            snackBar(response['error'], context);
+            Navigator.pop(context);
+          }
+        } catch (err) {
+          print(err);
         }
-      });
-    }
+      }
+    });
   }
 
   void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {

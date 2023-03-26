@@ -20,6 +20,7 @@ class _qr_pageState extends State<qr_page> {
   @override
   Widget build(BuildContext context) {
     return ScaffoldWidget(
+      settingsButton: false,
       context: context,
       content: Container(
         width: double.infinity,

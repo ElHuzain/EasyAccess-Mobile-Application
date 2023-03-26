@@ -32,7 +32,6 @@ class Http {
       }
     } catch (err) {
       print(err);
-      // return "fail";
     }
   }
 }

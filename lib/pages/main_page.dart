@@ -39,17 +39,22 @@ class _main_pageState extends State<main_page> {
     setState(() {
       accId = prefs;
       if (prefs2 != 'null') accs = jsonDecode(prefs2);
+      // ScaffoldMessenger.of(context).clearSnackBars();
     });
   }
 
-  Future<void> retrieve() async { 
-    dynamic pref = await Preferences.getPref('accId');
-    dynamic res = await Http.get('/link?id=$pref');
-    await Preferences.setPref('myAccs', jsonEncode(res['links']));
+  Future<void> retrieve() async {
+    try {
+      dynamic pref = await Preferences.getPref('accId');
+      dynamic res = await Http.get('/link?id=$pref');
+      await Preferences.setPref('myAccs', jsonEncode(res['links']));
 
-    setState(() {
-      accs = res['links'];
-    });
+      setState(() {
+        accs = res['links'];
+      });
+    } catch (err) {
+      print(err);
+    }
   }
 
   @override
@@ -172,7 +177,7 @@ class Floaty extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: () {
-        Navigate.To(context, add_link());
+        Navigate.Push(context, add_link());
       },
       child: TextWidget("+", size: 35),
       backgroundColor: ThemeColor.Primary,
